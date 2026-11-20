@@ -104,7 +104,7 @@
   .abtn.new{color:var(--purple2);border-color:rgba(139,124,247,.55)}
   .abtn.new:hover{background:rgba(111,92,241,.14)}
   .abtn[disabled]{opacity:.45;cursor:not-allowed}
-  .idcell .id{color:#cfcfdd;font-size:11px;white-space:nowrap}
+  .idcell .id{color:#cfcfdd;font-size:10.5px;white-space:nowrap}
   .idcell .parent{color:var(--dim);font-size:11.5px;display:flex;align-items:center;gap:5px;margin-top:3px}
   .pill{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.05em;white-space:nowrap}
   .pill.long{font-size:9px;letter-spacing:.02em;padding:0 7px}
@@ -215,6 +215,20 @@
   /* ---------- spec annotations ---------- */
   .callout{display:none}
   body.spec .callout{display:inline-flex}
+
+  /* ---------- records timeline ---------- */
+  .timeline{position:relative;margin:8px 0 4px;padding-left:18px;max-height:330px;overflow:auto}
+  .timeline:before{content:"";position:absolute;left:4px;top:8px;bottom:8px;width:1px;background:var(--line)}
+  .tl{position:relative;padding-bottom:14px}
+  .tl .dot{position:absolute;left:-18px;top:4px;width:9px;height:9px;border-radius:50%;background:var(--dim);border:2px solid var(--panel);box-sizing:content-box}
+  .tl.approve .dot{background:var(--green)}
+  .tl.hold .dot{background:var(--amber)}
+  .tl.rollback .dot{background:var(--red)}
+  .tl.created .dot{background:var(--purple2)}
+  .tl .t{font-size:12.5px;font-weight:600;color:#e4e4ef;font-variant-numeric:tabular-nums}
+  .tl .m{font-size:11px;color:var(--dim);margin-top:2px}
+  .tl .n{font-size:11.5px;color:#b9b9c9;margin-top:6px;border-left:2px solid var(--line);padding-left:9px}
+  .tl .ref{font-size:10.5px;color:var(--purple2);margin-top:4px}
   .callout{
     width:18px;height:18px;border-radius:50%;background:var(--purple);color:#fff;font-size:10.5px;
     align-items:center;justify-content:center;font-weight:700;margin-left:6px;vertical-align:2px
@@ -356,11 +370,11 @@
         <table>
           <thead>
             <tr>
-              <th style="width:284px">ACTIONS</th>
-              <th style="width:178px">ID</th>
+              <th style="width:312px">ACTIONS</th>
+              <th style="width:174px">ID</th>
               <th style="width:142px">STATUS</th>
-              <th style="width:166px">RECEIVER</th>
-              <th style="width:54px">REGION</th>
+              <th style="width:150px">RECEIVER</th>
+              <th style="width:46px">REGION</th>
               <th class="num" data-new="1" style="width:88px">REQUESTED</th>
               <th class="num" data-new="1" style="width:80px">RELEASED</th>
               <th class="num" data-new="1" style="width:64px">HELD</th>
@@ -579,6 +593,32 @@
   </div>
 </div>
 
+<!-- ================= MODAL 3: RECORDS ================= -->
+<div class="overlay" id="modalRecords">
+  <div class="modal" style="width:620px" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <div class="warn" style="background:rgba(111,92,241,.16);color:var(--purple2)">≡</div>
+      <div>
+        <div class="modal-title">Records <span class="mono" id="recId"></span></div>
+        <div class="modal-sub" id="recSub"></div>
+      </div>
+      <button class="xbtn" data-close>✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="split" style="grid-template-columns:repeat(4,1fr)">
+        <div><div class="k">Requested</div><div class="v" id="recReq">400.00</div></div>
+        <div><div class="k">Released</div><div class="v rel" id="recRel">0.00</div></div>
+        <div><div class="k">Held</div><div class="v" id="recHeld">0.00</div></div>
+        <div><div class="k">Remaining</div><div class="v rem" id="recRem">400.00</div></div>
+      </div>
+      <div class="timeline" id="recList"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" data-close>CLOSE</button>
+    </div>
+  </div>
+</div>
+
 <!-- toast -->
 <div class="toast" id="toast">
   <b id="toastTitle">Payout partially approved</b>
@@ -603,13 +643,20 @@
 <script>
 /* ---------------- data ---------------- */
 const rows = [
-  { id:'cmwnjkcww001sfx010fuhd1w0', parent:null, status:'CREATED', receiver:'elseautoseller', psps:'psps000_nez6vkT', cur:'USD', requested:30.710, released:null, held:null, returned:null, actionable:false, note:true },
-  { id:'cmwnjkcwp001rfx01tv1y2tc9', parent:null, status:'CREATED', receiver:'elseautoseller', psps:'psps000_nez6vkT', cur:'USD', requested:400.000, released:0, held:0, returned:0, actionable:true, note:true, target:true },
-  { id:'cmwnj49jf001mfx01poszetf',  parent:'cmwnj49jf001lfx011d3skev1', status:'REVERSED', receiver:'elseautoseller', psps:'psps000_nez6vkT', cur:'USD', requested:38.380, released:null, held:null, returned:null, actionable:false, note:false },
-  { id:'cmwninj7k0015fx01njgv7dx6', parent:null,          status:'CREATED',  receiver:'Faye4',          psps:'psps000_vc-19hU', cur:'USD', requested:48.260,  released:null, held:null, returned:null, actionable:false, note:true },
-  { id:'cmwnmwk8l00armd01emdrj3w',  parent:'cmwnmwk8l00armd01emdrj3w', status:'CREATED', receiver:'Faye4', psps:'psps000_vc-19hU', cur:'USD', requested:2.970, released:null, held:null, returned:null, actionable:false, note:false },
-  { id:'cmwki580f0046kq01cipa2tb7', parent:'cmwki58070045kq01dnmi45a', status:'CREATED', receiver:'elseautoseller', psps:'psps000_nez6vkT', cur:'USD', requested:6.150, released:null, held:null, returned:null, actionable:false, note:false }
+  { id:'cmwnjkcww001sfx010fuhd1w0', parent:null, status:'CREATED', receiver:'elseautoseller', psps:'psps000_nez6vkT', cur:'USD', requested:30.710, released:null, held:null, returned:null, actionable:false, note:true,
+    log:[{kind:'created', t:'Nov 18, 09:14', actor:'elseautoseller', amount:30.71}] },
+  { id:'cmwnjkcwp001rfx01tv1y2tc9', parent:null, status:'CREATED', receiver:'elseautoseller', psps:'psps000_nez6vkT', cur:'USD', requested:400.000, released:0, held:0, returned:0, actionable:true, note:true, target:true,
+    log:[{kind:'created', t:'Nov 19, 09:12', actor:'elseautoseller', amount:400}] },
+  { id:'cmwnj49jf001mfx01poszetf',  parent:'cmwnj49jf001lfx011d3skev1', status:'REVERSED', receiver:'elseautoseller', psps:'psps000_nez6vkT', cur:'USD', requested:38.380, released:null, held:null, returned:null, actionable:false, note:false,
+    log:[{kind:'created', t:'Nov 17, 16:40', actor:'elseautoseller', amount:38.38},{kind:'rollback', t:'Nov 18, 10:02', actor:'Kelvin Qu', amount:38.38, note:'Tracking reused across buyers — returned before release.'}] },
+  { id:'cmwninj7k0015fx01njgv7dx6', parent:null,          status:'CREATED',  receiver:'Faye4',          psps:'psps000_vc-19hU', cur:'USD', requested:48.260,  released:null, held:null, returned:null, actionable:false, note:true,
+    log:[{kind:'created', t:'Nov 19, 11:05', actor:'Faye4', amount:48.26}] },
+  { id:'cmwnmwk8l00armd01emdrj3w',  parent:'cmwnmwk8l00armd01emdrj3w', status:'CREATED', receiver:'Faye4', psps:'psps000_vc-19hU', cur:'USD', requested:2.970, released:null, held:null, returned:null, actionable:false, note:false,
+    log:[{kind:'created', t:'Nov 19, 11:05', actor:'Faye4', amount:2.97}] },
+  { id:'cmwki580f0046kq01cipa2tb7', parent:'cmwki58070045kq01dnmi45a', status:'CREATED', receiver:'elseautoseller', psps:'psps000_nez6vkT', cur:'USD', requested:6.150, released:null, held:null, returned:null, actionable:false, note:false,
+    log:[{kind:'created', t:'Nov 19, 08:57', actor:'elseautoseller', amount:6.15}] }
 ];
+const OPERATOR = 'Julia Li';
 const R0 = rows.find(r => r.target);
 let childRow = null;
 let action = 'approve';
@@ -668,6 +715,7 @@ function renderRows(){
           <button class="abtn hold ${r.actionable?'on':''}" ${r.actionable?'':'disabled'} data-act="hold">Hold</button>
           <button class="abtn ${r.actionable?'on':''}" ${r.actionable?'':'disabled'} data-act="approve">Approve</button>
           <button class="abtn ${r.actionable?'on':''}" ${r.actionable?'':'disabled'} data-act="rollback">Rollback</button>
+          <button class="abtn" data-rec="${r.id}">Records</button>
           <button class="abtn ${r.note?'on':''}" ${r.note?'':'disabled'}>Notes</button>
         </div>
       </td>
@@ -694,6 +742,7 @@ function renderRows(){
   }).join('');
 
   document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => openAction(b.dataset.act));
+  document.querySelectorAll('[data-rec]').forEach(b => b.onclick = () => openRecords(b.dataset.rec));
 }
 
 /* ---------------- amount math ---------------- */
@@ -798,6 +847,7 @@ function demo(kind){
 function closeAll(){
   $('#modalAction').classList.remove('show');
   $('#modalConfirm').classList.remove('show');
+  $('#modalRecords').classList.remove('show');
   if (state !== 'done') setStep('list');
 }
 function toConfirm(){
@@ -890,7 +940,8 @@ function doConfirm(){
     childRow = partial ? {
       id: 'cmwx7r2pk00' + Math.floor(Math.random()*900+100) + 'fx01' + Math.floor(Math.random()*900+100),
       parent: R0.id, status:'PENDING', receiver: R0.receiver, psps: R0.psps, cur: 'USD',
-      requested: amt, released: amt, held: 0, returned: 0, actionable:false, note:false, child:true
+      requested: amt, released: amt, held: 0, returned: 0, actionable:false, note:false, child:true,
+      log: [{ kind:'created', t: stamp(), actor: OPERATOR, amount: amt, note: `Created from ${R0.id}` }]
     } : null;
   }
   if (action === 'hold'){
@@ -900,6 +951,17 @@ function doConfirm(){
     R0.returned = Math.round((R0.returned + amt)*100)/100;
     childRow = null;
   }
+
+  R0.log.push({
+    kind: action,
+    t: stamp(),
+    actor: OPERATOR,
+    amount: amt,
+    note: action === 'approve' ? msg
+        : action === 'hold' ? ($('#holdReason').value || $('#holdNotes').value)
+        : ($('#rbReason').value || $('#rbNotes').value),
+    ref: childRow ? ('child payout ' + childRow.id) : ''
+  });
 
   R0.status = statusOf(R0);
   R0.actionable = openAmt(R0) > 0.001;
@@ -931,6 +993,44 @@ function showToast(){
   t.classList.add('show');
   clearTimeout(showToast._t);
   showToast._t = setTimeout(() => t.classList.remove('show'), 4600);
+}
+
+/* ---------------- records ---------------- */
+function stamp(){
+  return new Date().toLocaleString('en-US', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:false});
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function recLabel(e){
+  const a = money(e.amount);
+  if (e.kind === 'created')  return `Request created — ${a} USD`;
+  if (e.kind === 'approve')  return `Released ${a} USD`;
+  if (e.kind === 'hold')     return `Held ${a} USD`;
+  if (e.kind === 'rollback') return `Rolled back ${a} USD`;
+  return `${e.kind} ${a} USD`;
+}
+function openRecords(id){
+  const r = rows.find(x => x.id === id) || (childRow && childRow.id === id ? childRow : null);
+  if (!r) return;
+  $('#recId').textContent = r.id;
+  $('#recSub').textContent = `${r.receiver} · requested ${money(r.requested)} ${r.cur}`;
+  $('#recReq').textContent = money(r.requested);
+  $('#recRel').textContent = money(r.released || 0);
+  $('#recHeld').textContent = money(r.held || 0);
+  $('#recRem').textContent = money(r.child ? 0 : openAmt(r));
+
+  const log = (r.log || []).slice().reverse();
+  $('#recList').innerHTML = log.length
+    ? log.map(e => `
+      <div class="tl ${e.kind}">
+        <span class="dot"></span>
+        <div class="t">${recLabel(e)}</div>
+        <div class="m">${e.t} · ${esc(e.actor)}</div>
+        ${e.note ? `<div class="n">${esc(e.note)}</div>` : ''}
+        ${e.ref ? `<div class="ref">${esc(e.ref)}</div>` : ''}
+      </div>`).join('')
+    : '<div class="hint">No records yet.</div>';
+
+  $('#modalRecords').classList.add('show');
 }
 
 /* ---------------- wiring ---------------- */
@@ -988,6 +1088,7 @@ updateSplit();
   if (s === 'rollback'){ openAction('rollback'); demo('rollback'); }
   if (s === 'confirm'){ openAction('approve'); demo('approve'); toConfirm(); }
   if (s === 'done'){ openAction('approve'); demo('approve'); toConfirm(); doConfirm(); }
+  if (p.get('records') === '1'){ openRecords(R0.id); }
 })();
 
 </script>
