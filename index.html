@@ -149,10 +149,6 @@
   .combo input:focus{outline:none}
   .combo .unit{padding-right:12px;color:var(--muted);font-size:11.5px;letter-spacing:.04em}
   .eq{color:var(--dim);font-size:12px}
-  .ratio{display:flex;gap:3px;background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:3px;flex:0 0 auto}
-  .ratio button{height:30px;padding:0 10px;border-radius:6px;font-size:11.5px;color:var(--muted);border:1px solid transparent}
-  .ratio button:hover{color:#dcdcea}
-  .ratio button.on{background:rgba(111,92,241,.24);color:#fff;border-color:rgba(139,124,247,.6)}
   input[type=text]::-webkit-outer-spin-button,input[type=text]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   .mode{font-size:9.5px;letter-spacing:.06em;padding:2px 6px;border-radius:5px;margin-left:8px;vertical-align:2px;font-weight:700}
   .mode.full{color:var(--green);border:1px solid rgba(53,196,147,.45)}
@@ -377,7 +373,7 @@
 
       <p class="hint" style="margin-top:12px">
         Row 2 is the reviewable request. <b>Approve</b>, <b>Hold</b> and <b>Rollback</b> each take an amount —
-        type an amount or pick a ratio (20 / 50 / 80%). Use the stepper above to walk the flow.
+        type an amount to act on part of it. Use the stepper above to walk the flow.
       </p>
     </section>
 
@@ -471,13 +467,8 @@
             <input id="amountInput" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="400.00" />
             <span class="unit">USD</span>
           </div>
-          <div class="ratio" id="ratioGroup">
-            <button type="button" data-pct="20">20%</button>
-            <button type="button" data-pct="50">50%</button>
-            <button type="button" data-pct="80">80%</button>
-          </div>
         </div>
-        <div class="hint" id="amountHint">Prefilled with the open amount. Type an amount, or pick a ratio to act on part of it.</div>
+        <div class="hint" id="amountHint">Prefilled with the open amount. Type a smaller amount to act on part of it.</div>
       </div>
 
       <div class="split newbox">
@@ -488,28 +479,10 @@
 
       <!-- ---------- approve ---------- -->
       <div id="blockApprove">
-        <div class="field newbox" id="reasonField">
-          <label>Reason code <span class="callout">2</span></label>
-          <select class="control" id="reasonSelect">
-            <option value="">Select a reason…</option>
-            <option value="order_risk" selected>Order-level risk — orders still under review</option>
-            <option value="unshipped">High unshipped amount / ratio</option>
-            <option value="tracking">Tracking number used by multiple buyers</option>
-            <option value="account">Account-level risk label</option>
-            <option value="channel">Channel limit (provider minimum / cap)</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-
         <div class="field newbox" id="msgField">
-          <label>Message to the seller <span class="callout">3</span></label>
-          <textarea class="control" id="msgInput" placeholder="e.g. $100.00 of your request relates to 3 orders that are still under review. It stays in your request until those orders clear."></textarea>
+          <label>Message to the seller <span class="callout">2</span></label>
+          <textarea class="control" id="msgInput" placeholder="e.g. Part of your request relates to 3 orders that are still under review. It stays in your request until those orders clear."></textarea>
           <div class="hint">Free text. This is exactly what the seller reads in the app, on the payout detail and in the email.</div>
-        </div>
-
-        <div class="field" id="noteField">
-          <label>Internal note (Aloy only)</label>
-          <textarea class="control" id="noteInput" placeholder="e.g. 3 orders 9789-… flagged by local_pickup_risk; remainder is clean."></textarea>
         </div>
 
         <div class="note" id="returnNote">
@@ -618,8 +591,8 @@
   <h4>What changed vs. today</h4>
   <ol>
     <li><b>Approve / Hold / Rollback all take an amount.</b> A request is no longer approved, held or reversed as one block — each action works on a slice of it.</li>
-    <li>The amount is <b>prefilled with the open amount</b>; type any number, or use the <b>20% / 50% / 80%</b> ratio chips to act on a slice.</li>
-    <li><b>Approve</b>: reason code + seller message appear only when you release less than the open amount.</li>
+    <li>The amount is <b>prefilled with the open amount</b>; type any smaller number to act on a slice.</li>
+    <li><b>Approve</b>: only the free-text seller message appears, and only when you release less than the open amount. No internal reason or note is captured.</li>
     <li><b>Hold</b>: freezes that amount with a status and reason; the rest of the request stays actionable.</li>
     <li><b>Rollback</b>: returns that amount to the seller balance and recalculates cashflow; the rest stays in the request.</li>
     <li>List gains <b>RELEASED / HELD / REMAINING</b>: remaining = requested − released − held − returned.</li>
@@ -729,11 +702,6 @@ function readAmount(){
   const v = parseFloat(String($('#amountInput').value).replace(/[^0-9.]/g,''));
   return isNaN(v) ? 0 : Math.round(v*100)/100;
 }
-function trimPct(p){ return String(Math.round(p*100)/100); }
-function ratioAmount(pct){
-  const open = openAmt(R0);
-  return Math.min(Math.round((R0.requested * pct) / 100 * 100)/100, open);
-}
 
 function updateSplit(){
   const open = openAmt(R0);
@@ -751,30 +719,23 @@ function updateSplit(){
   badge.className = 'mode ' + (partial ? 'partial' : 'full');
   $('#toConfirm').textContent = partial ? `${ACT[action].btn} ${money(amt)}` : ACT[action].btn;
 
-  // ratio chips: highlight the one that matches the current amount
-  document.querySelectorAll('#ratioGroup button').forEach(b => {
-    const target = ratioAmount(Number(b.dataset.pct));
-    b.classList.toggle('on', Math.abs(target - amt) < 0.005);
-  });
-
-  // approve: reason + message only when partial
+  // approve: the seller message only shows when releasing less than the open amount
   if (action === 'approve'){
-    ['#reasonField','#msgField','#returnNote'].forEach(sel => { $(sel).hidden = !partial; });
+    ['#msgField','#returnNote'].forEach(sel => { $(sel).hidden = !partial; });
   }
 
   const ah = $('#amountHint'), val = $('#validation');
   ah.className = 'hint'; val.className = 'hint'; val.textContent = '';
   ah.textContent = {
-    approve: 'Prefilled with the open amount. Type an amount, or pick a ratio, to release part of it.',
-    hold: 'How much of this request should be frozen? Type an amount or pick a ratio.',
-    rollback: 'How much should go back to the seller balance? Type an amount or pick a ratio.'
+    approve: 'Prefilled with the open amount. Type a smaller amount to release part of it.',
+    hold: 'How much of this request should be frozen? Type an amount.',
+    rollback: 'How much should go back to the seller balance? Type an amount.'
   }[action];
 
   let ok = true;
   if (amt <= 0){ ah.className = 'hint err'; ah.textContent = 'Enter an amount.'; ok = false; }
   else if (amt > open + 0.001){ ah.className = 'hint err'; ah.textContent = `Cannot exceed the open amount ${money(open)}.`; ok = false; }
   else if (amt < MIN){ ah.className = 'hint err'; ah.textContent = `Minimum is ${money(MIN)} (channel minimum).`; ok = false; }
-  else if (action === 'approve' && partial && !$('#reasonSelect').value){ val.className = 'hint err'; val.textContent = 'Pick a reason code — required when you don’t release the full amount.'; ok = false; }
   else if (action === 'hold' && !$('#holdStatus').value){ val.className = 'hint err'; val.textContent = 'Pick a hold status.'; ok = false; }
   else if (action === 'rollback' && !$('#rbReason').value){ val.className = 'hint err'; val.textContent = 'Pick a rollback reason.'; ok = false; }
 
@@ -803,9 +764,7 @@ function openAction(kind){
   $('#blockRollback').hidden = kind !== 'rollback';
 
   $('#amountInput').value = money(openAmt(R0));
-  $('#reasonSelect').value = '';
   $('#msgInput').value = '';
-  $('#noteInput').value = '';
   $('#holdStatus').value = '';
   $('#holdReason').value = '';
   $('#holdNotes').value = '';
@@ -818,13 +777,10 @@ function openAction(kind){
   inp.focus(); inp.select();
 }
 function demo(kind){
-  const chip = kind === 'approve' ? 50 : 20;
-  const slice = ratioAmount(chip);
+  const slice = Math.min(Math.round(R0.requested * 0.5 * 100)/100, openAmt(R0));
   if (kind === 'approve'){
     $('#amountInput').value = slice.toFixed(2);
-    $('#reasonSelect').value = 'order_risk';
     $('#msgInput').value = DEFAULT_MSG;
-    $('#noteInput').value = '3 orders flagged by local_pickup_risk; remainder is clean.';
   }
   if (kind === 'hold'){
     $('#amountInput').value = slice.toFixed(2);
@@ -981,13 +937,7 @@ function showToast(){
 $('#toConfirm').onclick = toConfirm;
 $('#doConfirm').onclick = doConfirm;
 $('#amountInput').addEventListener('input', () => { updateSplit(); });
-document.querySelectorAll('#ratioGroup button').forEach(b => {
-  b.onclick = () => {
-    $('#amountInput').value = ratioAmount(Number(b.dataset.pct)).toFixed(2);
-    updateSplit();
-  };
-});
-['#reasonSelect','#holdStatus','#rbReason'].forEach(sel => $(sel).addEventListener('change', updateSplit));
+['#holdStatus','#rbReason'].forEach(sel => $(sel).addEventListener('change', updateSplit));
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeAll);
 
 $('#stepbar').addEventListener('click', e => {

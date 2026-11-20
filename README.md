@@ -2,7 +2,7 @@
 
 Interactive low-fidelity prototype for **Partially Approve Balance** (seller payout requests).
 
-- **Flow**: Approve / Hold / Rollback each take an amount (20% / 50% / 80% ratio chips or a custom amount). Released slices create a child payout with `parentId`; held slices stay frozen; rolled-back slices return to the seller balance.
+- **Flow**: Approve / Hold / Rollback each take an amount. Released slices create a child payout with `parentId`; held slices stay frozen; rolled-back slices return to the seller balance. No internal reason / note is captured — only the free-text message the seller reads.
 - **Seller side**: Balance + payout detail showing requested / released / still-in-request, plus the push and email copy.
 - **Data**: dummy rows and IDs only — no real seller data.
 
